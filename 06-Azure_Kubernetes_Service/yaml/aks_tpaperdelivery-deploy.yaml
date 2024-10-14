@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: tpaperdelivery
-          image: contlandregistry.azurecr.io/tpaperdelivery:v1
+          image: contlandregistry.azurecr.io/tpaperdelivery:v5
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

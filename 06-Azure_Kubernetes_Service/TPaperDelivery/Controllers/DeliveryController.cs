@@ -18,7 +18,8 @@ namespace TPaperDelivery
             _logger = logger;
         }
 
-        [Topic("pubsub-super-new", "aksdelivery")]
+        [Topic("pubsub-rabbitmq", "aksdelivery")]
+        //[Topic("pubsub-super-new", "aksdelivery")]
         [HttpPost]
         public async Task<IActionResult> ProcessEdiOrder(Delivery delivery)
         {
