@@ -18,12 +18,9 @@ https://azure.microsoft.com/en-us/free/
 ## Steps
 1. Step 1. Azure infrastructure
 2. Step 2. Local containerisation
-3. Step 3. Azure Container instances deploy
-4. Step 4. Azure Container instances multi container group
-5. Step 5. Azure Container Apps
-6. Step 6. Container Apps with DAPR
-7. Step 7. Migration to Azure Kubernetes Service and DAPR
-8. Step 8. AKS Component switch and migration to on-premises.
+3. Step 3. Azure Container Apps
+4. Step 4. Container Apps with DAPR
+6. Step 6. Migration to Azure Kubernetes Service, Dapr, component switch
 
 
 ## Step 1. Azure infrastructure
@@ -247,159 +244,9 @@ Open Docker desktop => configuration => Resources => File sharing => Add your pr
 
 !! When you try to start the same solution from the new folder, you might need to stop and delete containers via docker compose.
 
-## Step 3. Azure Container instances deploy.
-
-The first thing is we need to login locally to Azure and authenticate to the newly created Azure Container Registry, build, tag and push container there.
-
-Then we will create identity for container registry.
-
-And finally create a new container instance from our container in Azure Container Registry
 
 
-Let's begin with local CMD promt and pushing of the container to Azure
-!!!Use additional command az account set --subscription 95cd9078f8c to deploy resources into the correct subscription
-```cmd
-az login
-
-az account show
-az acr login --name contlandregistry
-```
-
-Open Visual studio and re-build your project in the Release mode, check with command line that the new container with the latest tag is created
-
-Set a next version in manifest and command below before execution, check docker images command
-
-```
-docker tag tpaperorders:latest contlandregistry.azurecr.io/tpaperorders:v1
-docker images
-```
-
-then push container to the container registry with
-```
-docker push contlandregistry.azurecr.io/tpaperorders:v1
-```
-
-Check if image is in the container registry
-
-```
-az acr repository list --name contlandregistry --output table
-```
-
-Then we are moving to the creation of service principal for Container registry via Azure Portal Bash console
-
-```
-registry=contlandregistry
-principalName=registryPrincipal
-
-registryId=$(az acr show --name $registry --query "id" --output tsv)
-
-regPassword=$(az ad sp create-for-rbac --name $principalName --scopes $registryId --role acrpull --query "password" --output tsv)
-regUser=$(az ad sp list --display-name $principalName --query "[].appId" --output tsv)
-
-echo "Service principal ID: $regUser"
-echo "Service principal password: $regPassword"
-```
-
-The output of the following script should containe login and password
-
-```
-Service principal ID: 277a0a62-9fb0
-Service principal password: iUe44444444444444444444444a2r
-```
-
-Then we can continue from a local command line or azure portal.
-
-Getting the login server
-
-```
-az acr show --name contlandregistry --query loginServer
-```
- output will be contlandregistry.azurecr.io
-
-So we adding the correct values to our application string
-The resource group cont-land-instances with postfix created earlier.
---dns-name-label is your unique public name, so you can create it with your container registry name and postfix.
-
-```
-az container create --resource-group cont-land-instances --name cont-land-aci --image contlandregistry.azurecr.io/tpaperorders:v1 --cpu 1 --memory 1 --registry-login-server contlandregistry.azurecr.io --registry-username 277a0a62-9fb0 --registry-password iUe44444444444444444444444a2r --ip-address Public --dns-name-label contlandregistry --ports 80
-```
-
-As results we have our new container app deployed
-
-<img width="638" alt="image" src="https://user-images.githubusercontent.com/36765741/208309681-04de647c-118e-4c94-a9a2-134b667c0778.png">
-
-You can monitor deployment of container instance with
-```
-az container show --resource-group cont-land-instances --name cont-land-aci --query instanceView.state
-```
-
-Our application is not using Application insights, so we can check logs quickly via additional command
-
-```
-az container logs --resource-group cont-land-instances --name cont-land-aci
-```
-
-This way you will see that we have an error with the url referencing the delivery controller, so we can fix it with Container App fqdn
-
-```
-            string url =
-                $"http://contlandregistry.northeurope.azurecontainer.io:80/api/delivery/create/{savedOrder.ClientId}/{savedOrder.Id}/{savedOrder.ProductCode}/{savedOrder.Quantity}";
-```
-
-Rebuild container, tag it with version 2 and deploy it again to the container apps
-
-## Step 4. Azure Container instances multi container group.
-
-This is a quite exotic case, because usage of a container with a sidecar or several services inside one container group without scale possibility is almost pointless.
-
-But you should be aware about this possibilty, so you can leverage simple two service scenario as fast and easy as possible.
-
-At the moment you can safely skip this step and move to the container instances :).
-
-let's login to our container registry from a step 4 folder
-```cmd
-az login
-
-az account show
-az acr login --name contlandregistry
-```
-
-We need to build, tag and push our container images to Container registry
-
-```
-docker tag tpaperorders:latest contlandregistry.azurecr.io/tpaperorders:v2
-docker images
-docker push contlandregistry.azurecr.io/tpaperorders:v2
-
-docker tag tpaperdelivery:latest contlandregistry.azurecr.io/tpaperdelivery:v2
-docker images
-docker push contlandregistry.azurecr.io/tpaperdelivery:v2
-```
-
-Not it is time to authenticat docker to your azure subscription and create context for resource group from a command line inside step 4 solution folder
-
-```
-docker login azure
-docker context create aci instancescontext
-docker context ls
-docker context use instancescontext
-
-```
-
-![image](https://user-images.githubusercontent.com/36765741/208311730-3623ac6c-0265-4da0-822f-4b725a364f05.png)
-
-and after context set we can do the compose update
-
-```
-docker compose up
-```
-
-For extra details you can this refence 
-https://learn.microsoft.com/en-us/azure/container-instances/tutorial-docker-compose
-
-
-
-## Step 5. Azure Container Apps
+## Step 3. Azure Container Apps
 
 As the initial step we will update our application with SQL database code, please double check difference between Step 5 initial commit and database update commit
 Don't forget to add database secrets to the local.env secret file located in the root directory.
@@ -469,7 +316,7 @@ We should use the full path to make initial call to order API and see results
 tpaperorders-app-20221115224238--k1osno8.agreeablecoast-99a44d4d.northeurope.azurecontainerapps.io/api/order/create/1
 
 
-## Step 6. Container Apps with DAPR
+## Step 4. Container Apps with DAPR
 
 And initialize DAPR for the local development
 
@@ -487,8 +334,8 @@ services:
   tpaperdelivery:
     image: ${DOCKER_REGISTRY-}tpaperdelivery
     build:
-      context: .
-      dockerfile: TPaperDelivery/Dockerfile
+      context: TPaperDelivery
+      dockerfile: Dockerfile
     ports:
       - "52000:50001"
     env_file:
@@ -496,7 +343,7 @@ services:
       
   tpaperdelivery-dapr:
     image: "daprio/daprd:latest"
-    command: [ "./daprd", "-app-id", "tpaperdelivery", "-app-port", "80" ]
+    command: [ "./daprd", "-app-id", "tpaperdelivery", "-app-port", "8080" ]
     depends_on:
       - tpaperdelivery
     network_mode: "service:tpaperdelivery"
@@ -504,8 +351,8 @@ services:
   tpaperorders:
     image: ${DOCKER_REGISTRY-}tpaperorders
     build:
-      context: .
-      dockerfile: TPaperOrders/Dockerfile
+      context: TPaperOrders
+      dockerfile: Dockerfile
     ports:
       - "51000:50001"
     env_file:
@@ -513,10 +360,11 @@ services:
 
   tpaperorders-dapr:
     image: "daprio/daprd:latest"
-    command: [ "./daprd", "-app-id", "tpaperorders", "-app-port", "80" ]
+    command: [ "./daprd", "-app-id", "tpaperorders", "-app-port", "8080" ]
     depends_on:
       - tpaperorders
     network_mode: "service:tpaperorders"      
+   
 ```
 
 Now we need to make adjustments to PaperOrders project, by adding DAPR dependency
@@ -529,21 +377,6 @@ Adding it to the Startup
 ```
 services.AddControllers().AddDapr();
 ```
-And replacing method CreateDeliveryForOrder with http endpoint invocation via DAPR client
-
-```
-        private async Task<DeliveryModel> CreateDeliveryForOrder(EdiOrder savedOrder, CancellationToken cts)
-        {
-            string serviceName = "tpaperdelivery";
-            string route = $"api/delivery/create/{savedOrder.ClientId}/{savedOrder.Id}/{savedOrder.ProductCode}/{savedOrder.Quantity}";
-
-            DeliveryModel savedDelivery = await _daprClient.InvokeMethodAsync<DeliveryModel>(
-                                          HttpMethod.Get, serviceName, route, cts);
-
-            return savedDelivery;
-        }
-        }
-```
 
 If we will start a service and invoke a new order via http://localhost:52043/api/order/create/1 we can see that everything working as usual, except that we got additional container sidecars for each service 
 
@@ -551,7 +384,7 @@ This way we leveraged service locator provided by dapr, it is still a http commu
 
 ### Now we will need to add a PubSub component and DAPR component 
 
-First we preparing simplified DAPR pubsub yaml manifest for pubsub(available in yaml folder of Step 2 End)
+First we preparing simplified DAPR pubsub yaml manifest for pubsub
 
 ```
 componentType: pubsub.azure.servicebus
@@ -577,6 +410,15 @@ Afterwards there is a need to put the correct Azure Service Bus connection strin
 
 One important this, please add the following section to your service bus connection string ";EntityPath=createdelivery"
 "Endpoint=sb://contland2141.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=CGnGz1L+Jw=;EntityPath=createdelivery"
+
+Another important point is that ACA is still Kubernetes, so there are no direct usage of reference, but link to that secret via metadata
+![image](https://github.com/user-attachments/assets/f1683ad8-60c9-4881-9784-e1ff5b4e4a27)
+
+Now after we enabled configuration for Container Environmnent, we need to setup DAPR sidecar for application using parameters from compose - AppID and port
+![image](https://github.com/user-attachments/assets/99a7bd94-0971-498c-89c7-9a00ce74932f)
+
+![image](https://github.com/user-attachments/assets/88217ab1-ce54-449a-8d35-021bb38f4d8f)
+
 
 Now let's add DAPR pub/sub components to our solution.
 
@@ -669,10 +511,22 @@ public async Task<IActionResult> Get(CancellationToken cts)
 }
 ```
 
-And after all this changes we can deploye and observe results in Azure.
+And after all this changes we can deploy and observe results in Azure.
+
+If you will stop fancy-delivery application from portal
+![image](https://github.com/user-attachments/assets/00a41363-efdd-4878-bb1f-d981e02912a1)
 
 
-## Step 7. Migration to Azure Kubernetes Service and DAPR
+And send more orders with(use your URL)
+https://fancy-order.orangetree-8d273e53.northeurope.azurecontainerapps.io/api/order/create/1
+
+Then you can see them waiting for subscriber in the message queue, if you click peek next messages
+![image](https://github.com/user-attachments/assets/8a6a6414-71de-4bf8-b142-0eb671c5ca43)
+
+Then after restart they will be consumed by delivery app
+
+
+## Step 6. Migration to Azure Kubernetes Service and DAPR
 
 As our application grows, Container Apps might be not enough, so the essential migration path is to Azure Kubernetes Service
 
@@ -777,21 +631,21 @@ spec:
       annotations:
         dapr.io/enabled: "true"
         dapr.io/app-id: "tpaperorders"
-        dapr.io/app-port: "80"
+        dapr.io/app-port: "8080"
         dapr.io/log-level: debug
     spec:
       containers:
         - name: tpaperorders
-          image: msactionregistry.azurecr.io/tpaperorders:v1
+          image: contlandregistry.azurecr.io/tpaperorders:v3
           imagePullPolicy: Always
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               protocol: TCP
           env:
             - name: ASPNETCORE_URLS
-              value: http://+:80
+              value: http://+:8080
             - name: SqlPaperString
-              value: Server=tcp:cont-land-sql.database.windows.net,1433;Database=paperorders;User ID=FancyUser3;Encrypt=true;Connection Timeout=30;
+              value: Server=tcp:dcc-modern-sql.database.windows.net,1433;Database=paperorders;User ID=FancyUser3;Encrypt=true;Connection Timeout=30;
             - name: SqlPaperPassword
               valueFrom:
                 secretKeyRef:
@@ -810,7 +664,7 @@ spec:
   type: LoadBalancer
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
       protocol: TCP
   selector:
     service: tpaperorders
@@ -838,21 +692,21 @@ spec:
       annotations:
         dapr.io/enabled: "true"
         dapr.io/app-id: "tpaperdelivery"
-        dapr.io/app-port: "80"
+        dapr.io/app-port: "8080"
         dapr.io/log-level: debug
     spec:
       containers:
         - name: tpaperdelivery
-          image: contlandregistry.azurecr.io/tpaperdelivery:v1
+          image: contlandregistry.azurecr.io/tpaperdelivery:v5
           imagePullPolicy: Always
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               protocol: TCP
           env:
             - name: ASPNETCORE_URLS
-              value: http://+:80
+              value: http://+:8080
             - name: SqlDeliveryString
-              value: Server=tcp:cont-land-sql.database.windows.net,1433;Database=deliveries;User ID=FancyUser3;Encrypt=true;Connection Timeout=30;
+              value: Server=tcp:dcc-modern-sql.database.windows.net,1433;Database=deliveries;User ID=FancyUser3;Encrypt=true;Connection Timeout=30;
             - name: SqlPaperPassword
               valueFrom:
                 secretKeyRef:
@@ -871,7 +725,7 @@ spec:
   type: LoadBalancer
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
       protocol: TCP
   selector:
     service: tpaperdelivery
@@ -1006,32 +860,6 @@ And then you can redeploy your containers, or simply restart deployment from Len
 
 
 
-And now it is much better, we have internal server exception with database migration and connectivity to SQL server
-![image](https://user-images.githubusercontent.com/36765741/203067924-e35fb263-c86d-4588-ae73-b415c670e514.png)
-
-Let's fix it
-
-There are two steps to do it via Azure Portal.
-
-Kubernetes connectivity
-* Navigate into resource group MC_cont-land-cluster_cont-land-cluster_northeurope
-* Open Virtual network there
-* Open Service endpoints and click add
-* Select Microsoft.SQL from dropdown and select aks-vnet in the next dropdown.
-* Add additional integration with Microsoft.ServiceBus
-* Save it, update might take a few minutes
-
-SQL Server connectivity.
-* Navigate to the resource group - ms-action-dapr-data
-* Open Sql Server ms-action-dapr
-* Click Show Firewall
-* On top click add client IP address, so you can access sql server from your work machine
-* Click  Add existing virtual network + Create new virtual network
-* Add aks-vnet with a proper name(check name via AKS cluster group)
-* Most important step - click Save in the portal UI
-
-Now it is much better
-![image](https://user-images.githubusercontent.com/36765741/203074200-17d114a2-deb9-4486-839d-d72ef74dd5aa.png)
 
 Now we can restart the order service, and if we will do kubectl describe command, we can see that deployment yaml have wrong container registry name.
 ![image](https://user-images.githubusercontent.com/36765741/203076456-2da93355-cb8d-4d94-813c-03bb8b7a5910.png)
@@ -1103,6 +931,19 @@ kubectl get all
 kubectl apply -f rabbitmq.yaml
 kubectl apply -f aks_pubsub-rabbitmq.yaml
 ```
+
+Then we need to change pubsub name in our core to the one in yaml file.
+
+For delivery
+```
+[Topic("pubsub-rabbitmq", "aksdelivery")]
+```
+
+For orders
+```
+await _daprClient.PublishEventAsync<DeliveryModel>("pubsub-rabbitmq", "aksdelivery", newDelivery, cts);
+```
+
 
 ```cmd
 docker tag tpaperorders:latest contlandregistry.azurecr.io/tpaperorders:v9
