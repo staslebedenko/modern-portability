@@ -18,19 +18,19 @@ spec:
       annotations:
         dapr.io/enabled: "true"
         dapr.io/app-id: "tpaperorders"
-        dapr.io/app-port: "80"
+        dapr.io/app-port: "8080"
         dapr.io/log-level: debug
     spec:
       containers:
         - name: tpaperorders
-          image: dccmodernregistry.azurecr.io/tpaperorders:v2
+          image: contlandregistry.azurecr.io/tpaperorders:v2
           imagePullPolicy: Always
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               protocol: TCP
           env:
             - name: ASPNETCORE_URLS
-              value: http://+:80
+              value: http://+:8080
             - name: SqlPaperString
               value: Server=tcp:dcc-modern-sql.database.windows.net,1433;Database=paperorders;User ID=FancyUser3;Encrypt=true;Connection Timeout=30;
             - name: SqlPaperPassword
@@ -51,7 +51,7 @@ spec:
   type: LoadBalancer
   ports:
     - port: 80
-      targetPort: 80
+      targetPort: 8080
       protocol: TCP
   selector:
     service: tpaperorders
