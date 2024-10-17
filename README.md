@@ -6,18 +6,15 @@ From container apps to Kubernetes
 1. Visual Studio or Visual Studio Code with .NET Framework 6.
 2. Docker Desktop to run the containerized application locally.
 https://www.docker.com/products/docker-desktop
-3. DAPR CLI installed on a local machine.
-https://docs.dapr.io/getting-started/install-dapr-cli/
-4. AZ CLI tools installation(for cloud deployment)
+3. AZ CLI tools installation(for cloud deployment)
 https://aka.ms/installazurecliwindows
-5. Azure subscription, if you want to deploy applications to Kubernetes(AKS).
+4. Azure subscription, if you want to deploy applications to Kubernetes(AKS).
 https://azure.microsoft.com/en-us/free/
-6. Kubectl installation https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/#install-kubectl-binary-with-curl-on-windows
-7. Good mood :)
+5. Kubectl installation https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/#install-kubectl-binary-with-curl-on-windows
+6. Good mood :)
 
 ## Steps
 1. Step 1. Azure infrastructure
-2. Step 2. Local containerisation
 3. Step 3. Azure Container Apps
 4. Step 4. Container Apps with DAPR
 6. Step 6. Migration to Azure Kubernetes Service, Dapr, component switch
