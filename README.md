@@ -32,6 +32,8 @@ You might need to reboot your PC so secrets will be available from the OS.
 
 For the start the preferrable way is to use Azue CLI bash console via Azure portal.
 
+If you work locally use az login --use-device-code
+
 ```bash
 subscriptionID=$(az account list --query "[?contains(name,'Microsoft')].[id]" -o tsv)
 echo "Test subscription ID is = " $subscriptionID
