@@ -1,4 +1,4 @@
-# azure-container-demo
+# Modern app portability
 From container apps to Kubernetes
 
 ## Prerequisites
